@@ -219,7 +219,8 @@ if __name__ == '__main__':
     print(Model_FILE)
 
 
-    OLD_MODEL = 'facebook/bart-large'
+    OLD_MODEL = 'facebook/bart-base'
+    #OLD_MODEL = 't5-small'
 
     app = "--optim_prefix {} --preseqlen {} --prefix_mode {} --format_mode {} " \
           "--gradient_accumulation_steps {} --learning_rate {} --weight_decay {} --seed {} " \
@@ -240,7 +241,7 @@ if __name__ == '__main__':
     if args.mode == 'xsum':
         app += xsum_app
 
-
+    app += ' --cache_dir /home/yiweiq/.cache/huggingface/transformers '
     if OLD_MODEL == 'gpt2-large':
         app += ' --cache_dir /u/scr/xlisali/contrast_LM/transformers/examples/control/gpt2-large-s3 '
 

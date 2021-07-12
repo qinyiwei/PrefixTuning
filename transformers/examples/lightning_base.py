@@ -294,7 +294,8 @@ class PrefixTransformer(pl.LightningModule):
         # else:
         #     save_path = self.output_dir.joinpath("checkpoint-hello")
         save_path = self.output_dir.joinpath("checkpoint-curr_best")
-        print('the suggested save_path is {}, saving to {}'.format(filepath[:-5], save_path))
+        #print('the suggested save_path is {}, saving to {}'.format(filepath[:-5], save_path))
+        print('saving to {}'.format(save_path))
 
         self.model.config.save_step = self.step_count
         self.model.save_pretrained(save_path)
@@ -759,7 +760,8 @@ def generic_train(
     # OLD VERSION
     # checkpoint_callback = OurModelCheckPoint(filepath=args.output_dir, prefix="checkpoint", monitor="val_loss", mode="min", save_top_k=1)
     # monitor_var = args.monitor_var
-    checkpoint_callback = OurModelCheckPoint(filepath=args.output_dir, prefix="checkpoint", monitor="val_rouge2", mode="max", save_top_k=1)
+    if checkpoint_callback is None:
+        checkpoint_callback = OurModelCheckPoint(filepath=args.output_dir, prefix="checkpoint", monitor="val_rouge2", mode="max", save_top_k=1)
 
     # checkpoint_callback = OurModelCheckPoint(
     #     filepath=os.path.join(args.output_dir, exp),
@@ -811,3 +813,4 @@ def generic_train(
         trainer.fit(model)
 
     return trainer
+

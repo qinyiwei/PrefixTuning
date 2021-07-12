@@ -508,13 +508,13 @@ class PrefixTuning(PretrainedBartModel):
         old_bsz = bsz
         bsz = bsz * sample_size
         input_tokens = self.input_tokens.unsqueeze(0).expand(bsz, -1).to(self.device)
-        temp_control = self.wte(input_tokens)
-        past_key_values = self.control_trans(temp_control) #bsz, seqlen, layer*emb
+        temp_control = self.wte(input_tokens)              #[torch.Size([16, 200, 768])] bsz, num input_tokens, embd_size
+        past_key_values = self.control_trans(temp_control) #bsz, seqlen, layer*emb=768*2*6 [torch.Size([16, 200, 9216])]
         bsz, seqlen, _ = past_key_values.shape
         past_key_values = past_key_values.view(bsz, seqlen, self.match_n_layer * 2, self.match_n_head,
-                                               self.match_n_embd)
+                                               self.match_n_embd) #torch.Size([16, 200, 12, 12, 64]), bsz,seqlen, 6*2, 12, 64
         past_key_values = self.dropout(past_key_values)
-        past_key_values = past_key_values.permute([2, 0, 3, 1, 4]).split(2)
+        past_key_values = past_key_values.permute([2, 0, 3, 1, 4]).split(2)   #6*(torch.Size([2, 16, 12, 200, 64])), 6*(2,bsz,12,seqlen,64)
 
 
 

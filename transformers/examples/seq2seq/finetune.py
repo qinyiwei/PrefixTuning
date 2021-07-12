@@ -833,7 +833,7 @@ def eval(args, model=None) -> SummarizationModule:
             # print(batch['input_ids'].device, model.device)
             out = model.test_step(batch, batch_idx)
             out_lst.append(out)
-            print(out['preds'])
+            #print(out['preds'])
             # batch = model.transfer_batch_to_device(batch, 'cpu')
         result = model.test_epoch_end(out_lst)
 
@@ -852,15 +852,16 @@ def eval(args, model=None) -> SummarizationModule:
             print(preds, file=f)
 
     # print(result)
-    for k, v in result.items():
-        if k != 'preds':
-            print(k, v)
+    #for k, v in result.items():
+    #    if k != 'preds':
+    #        print(k, v)
 
 
-    command_eval = "python /u/scr/xlisali/contrast_LM/transformers/examples/text-generation/xsum_results/eval_rouge.py " \
-                   " {}  /u/scr/xlisali/contrast_LM/transformers/examples/seq2seq/lowdata_xsum/xsum_small_test/test.target".format(out_path)
+    #command_eval = "python /u/scr/xlisali/contrast_LM/transformers/examples/text-generation/xsum_results/eval_rouge.py " \
+    #               " {}  /u/scr/xlisali/contrast_LM/transformers/examples/seq2seq/lowdata_xsum/xsum_small_test/test.target".format(out_path)
 
-    os.system(command_eval)
+    #os.system(command_eval)
+    
     # final evaluation.
     # gold_dir = 'e2e/test_gold.target'
     # os.system("python /u/scr/xlisali/e2e-metrics/measure_scores.py "
@@ -892,6 +893,6 @@ if __name__ == "__main__":
         else:
             args.prefixModel_name_or_path = os.path.join(args.output_dir,'checkpoint-curr_best')
             args.eval_batch_size = 10
-        args.data_dir = 'lowdata_xsum/xsum_small_test'
+        args.data_dir = args.data_dir+'/lowdata'
         args.do_train = False
         eval(args)
