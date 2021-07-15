@@ -9,6 +9,19 @@ if transformers.__version__=="3.2.0":
 else:
     from transformers.models.bart.modeling_bart import shift_tokens_right
 
+import numpy as np
+import random
+
+# fix the random seed
+def seed_everything(seed=11747):
+	random.seed(seed)
+	np.random.seed(seed)
+	torch.manual_seed(seed)
+	torch.cuda.manual_seed(seed)
+	torch.cuda.manual_seed_all(seed)
+	torch.backends.cudnn.benchmark = False
+	torch.backends.cudnn.deterministic = True
+
 class PrefixTuningT5(T5PreTrainedModel):
     """Classification Head for  transformer encoders"""
     def __init__(self, config, model_gpt2, optim_prefix=False, preseqlen=5, use_infix=False, deep_param=False):
@@ -1019,7 +1032,9 @@ class PrefixTuning(PretrainedBartModel):
                         nn.Linear(self.n_embd, self.mid_dim),
                         nn.Tanh(),
                         nn.Linear(self.mid_dim, self.match_n_layer * 2 * self.n_embd))
-
+                
+                #TODO: delete this sentence after debug
+                self.load_state_dict(torch.load("/home/yiweiq/initial_weights.ckp"))
 
 
             else:
@@ -1274,14 +1289,19 @@ class PrefixTuning(PretrainedBartModel):
         old_bsz = bsz
         bsz = bsz * sample_size
         input_tokens = self.input_tokens.unsqueeze(0).expand(bsz, -1).to(self.device)
-        temp_control = self.wte(input_tokens)              #[torch.Size([16, 200, 768])] bsz, num input_tokens, embd_size
-        past_key_values = self.control_trans(temp_control) #bsz, seqlen, layer*emb=768*2*6 [torch.Size([16, 200, 9216])]
-        bsz, seqlen, _ = past_key_values.shape
-        past_key_values = past_key_values.view(bsz, seqlen, self.match_n_layer * 2, self.match_n_head,
-                                               self.match_n_embd) #torch.Size([16, 200, 12, 12, 64]), bsz,seqlen, 6*2, 12, 64
-        past_key_values = self.dropout(past_key_values)
-        past_key_values = past_key_values.permute([2, 0, 3, 1, 4]).split(2)   #6*(torch.Size([2, 16, 12, 200, 64])), 6*(2,bsz,12,seqlen,64)
 
+        self.use_self_prefix = True
+        self.use_cross_prefix = False
+        self.use_encoder_prefix = False
+
+        if self.use_self_prefix:
+            temp_control = self.wte(input_tokens)              #[torch.Size([16, 200, 768])] bsz, num input_tokens, embd_size
+            past_key_values = self.control_trans(temp_control) #bsz, seqlen, layer*emb=768*2*6 [torch.Size([16, 200, 9216])]
+            bsz, seqlen, _ = past_key_values.shape
+            past_key_values = past_key_values.view(bsz, seqlen, self.match_n_layer * 2, self.match_n_head,
+                                                self.match_n_embd) #torch.Size([16, 200, 12, 12, 64]), bsz,seqlen, 6*2, 12, 64
+            past_key_values = self.dropout(past_key_values)
+            past_key_values = past_key_values.permute([2, 0, 3, 1, 4]).split(2)   #6*(torch.Size([2, 16, 12, 200, 64])), 6*(2,bsz,12,seqlen,64)
 
 
         if self.use_cross_prefix:
@@ -1305,40 +1325,49 @@ class PrefixTuning(PretrainedBartModel):
             past_key_values_enc = past_key_values_enc.permute([2, 0, 3, 1, 4]).split(2)
 
         result = []
-        for i, key_val in enumerate(past_key_values):
-            temp_tuple = (key_val[0].contiguous(),key_val[1].contiguous(),)
-            if self.use_cross_prefix:
-                key_val2 = past_key_values2[i]
-                temp_tuple += (key_val2[0].contiguous(),key_val2[1].contiguous(),)
-            else:
-                temp_tuple += (None, None,None,)
-            if self.use_encoder_prefix:
-                key_val_enc = past_key_values_enc[i]
-                temp_tuple += (key_val_enc[0].contiguous(),key_val_enc[1].contiguous(),)
-            else:
-                temp_tuple += (None, None,None,)
-            result.append(temp_tuple)
-
-            '''
-            temp_dict = {'self': {"prev_key": key_val[0].contiguous(),
-                                  "prev_value": key_val[1].contiguous(),
-                                  "prev_key_padding_mask": torch.zeros(bsz, seqlen).to(key_val.device).bool() #bsz, preseqlen
-                                 },
-                        }
-            if self.use_cross_prefix:
-                key_val2 = past_key_values2[i]
-                temp_dict['encoder_decoder'] = {"prev_key": key_val2[0].contiguous(),
-                                                "prev_value": key_val2[1].contiguous(),
-                                                "prev_key_padding_mask": torch.zeros(bsz, seqlen).to(key_val2.device).bool()
-                                                }
-            if self.use_encoder_prefix:
-                key_val_enc = past_key_values_enc[i]
-                temp_dict['encoder'] = {"prev_key": key_val_enc[0].contiguous(),
-                                        "prev_value": key_val_enc[1].contiguous(),
-                                        "prev_key_padding_mask": torch.zeros(bsz_enc, seqlen).to(key_val_enc.device).bool()
+        #for i, key_val in enumerate(past_key_values):
+        for i in range(6):
+            if transformers.__version__=="3.2.0":
+                temp_dict = {}
+                if self.use_self_prefix:
+                    key_val = past_key_values[i]
+                    temp_dict['self'] = {"prev_key": key_val[0].contiguous(),
+                                        "prev_value": key_val[1].contiguous(),
+                                        "prev_key_padding_mask": torch.zeros(bsz, seqlen).to(key_val.device).bool() #bsz, preseqlen
                                         }
-            result.append(temp_dict)
-            '''
+                if self.use_cross_prefix:
+                    key_val2 = past_key_values2[i]
+                    temp_dict['encoder_decoder'] = {"prev_key": key_val2[0].contiguous(),
+                                                    "prev_value": key_val2[1].contiguous(),
+                                                    "prev_key_padding_mask": torch.zeros(bsz, seqlen).to(key_val2.device).bool()
+                                                    }
+                if self.use_encoder_prefix:
+                    key_val_enc = past_key_values_enc[i]
+                    temp_dict['encoder'] = {"prev_key": key_val_enc[0].contiguous(),
+                                            "prev_value": key_val_enc[1].contiguous(),
+                                            "prev_key_padding_mask": torch.zeros(bsz_enc, seqlen).to(key_val_enc.device).bool()
+                                            }
+                result.append(temp_dict)
+
+            else:
+                temp_tuple = ()
+                if self.use_self_prefix:
+                    key_val = past_key_values[i]
+                    temp_tuple += (key_val[0].contiguous(),key_val[1].contiguous(),)
+                else:
+                    temp_tuple += (None, None,)
+                if self.use_cross_prefix:
+                    key_val2 = past_key_values2[i]
+                    temp_tuple += (key_val2[0].contiguous(),key_val2[1].contiguous(),)
+                else:
+                    temp_tuple += (None, None,)
+                if self.use_encoder_prefix:
+                    key_val_enc = past_key_values_enc[i]
+                    temp_tuple += (key_val_enc[0].contiguous(),key_val_enc[1].contiguous(),torch.zeros(bsz_enc, seqlen).to(key_val_enc.device).bool(),)
+                else:
+                    temp_tuple += (None, None,)
+                result.append(temp_tuple)
+            
 
         return result
 
@@ -1447,6 +1476,7 @@ class PrefixTuning(PretrainedBartModel):
         # else:
 
         past_key_values_prompt = self.get_prompt(bsz=bsz)
+        #past_key_values_prompt = None
 
         if past_key_values is not None:
             assert False, "Attention, use past_key_values for other things"
