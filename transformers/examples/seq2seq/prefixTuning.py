@@ -1291,8 +1291,8 @@ class PrefixTuning(PretrainedBartModel):
         input_tokens = self.input_tokens.unsqueeze(0).expand(bsz, -1).to(self.device)
 
         self.use_self_prefix = True
-        self.use_cross_prefix = False
-        self.use_encoder_prefix = False
+        self.use_cross_prefix = True
+        self.use_encoder_prefix = True
 
         if self.use_self_prefix:
             temp_control = self.wte(input_tokens)              #[torch.Size([16, 200, 768])] bsz, num input_tokens, embd_size
