@@ -10,6 +10,8 @@ from pytorch_lightning.utilities import rank_zero_info
 
 from transformers import (
     BartForConditionalGeneration,
+    MT5ForConditionalGeneration,
+    T5ForConditionalGeneration,
     AdamW,
     AutoConfig,
     AutoModel,
@@ -32,6 +34,7 @@ from transformers.optimization import (
 )
 
 from prefixTuning import PrefixTuning
+from prefixTuning import PrefixTuningT5
 
 logger = logging.getLogger(__name__)
 
@@ -142,21 +145,38 @@ class PrefixTransformer(pl.LightningModule):
         self.config.use_prefix = True
 
         self.seq2seq_model_type = MODEL_MODES[mode]
+
+        config_prefix = AutoConfig.from_pretrained(self.hparams.model_name_or_path, cache_dir=cache_dir)
+        self.model_type = self.config.model_type
+
         if seq2seq_model is None:
-            self.seq2seq_model = BartForConditionalGeneration.from_pretrained(
-                self.hparams.model_name_or_path,
-                from_tf=bool(".ckpt" in self.hparams.model_name_or_path),
-                config=self.config,
-                cache_dir=cache_dir,
-            )
+            if self.model_type == 'bart':
+                self.seq2seq_model = BartForConditionalGeneration.from_pretrained(
+                    self.hparams.model_name_or_path,
+                    from_tf=bool(".ckpt" in self.hparams.model_name_or_path),
+                    config=self.config,
+                    cache_dir=cache_dir,
+                )
+            elif self.model_type == 'mt5':
+                self.seq2seq_model = MT5ForConditionalGeneration.from_pretrained(
+                    self.hparams.model_name_or_path,
+                    from_tf=bool(".ckpt" in self.hparams.model_name_or_path),
+                    config=self.config,
+                    cache_dir=cache_dir,
+                )
+            elif self.model_type == "t5":
+                self.seq2seq_model = T5ForConditionalGeneration.from_pretrained(
+                    self.hparams.model_name_or_path,
+                    from_tf=bool(".ckpt" in self.hparams.model_name_or_path),
+                    config=self.config,
+                    cache_dir=cache_dir,
+                )
+            else:
+                assert False, "do not support model type:{}".format(self.model_type)
         else:
             self.seq2seq_model = seq2seq_model
 
-
-
-        config_prefix = AutoConfig.from_pretrained(self.hparams.model_name_or_path, cache_dir=cache_dir)
-        self.model_type = config_prefix.model_type
-
+        
         if self.hparams.optim_prefix == 'yes':
             optim_prefix_bool = True
         elif self.hparams.optim_prefix == 'no':
@@ -186,20 +206,32 @@ class PrefixTransformer(pl.LightningModule):
 
         # some extra stuff.
         config_prefix.mid_dim = self.hparams.mid_dim
-
+        
         # print(config_prefix)
-
         if self.hparams.prefixModel_name_or_path is not None:
             print('loading from {}'.format(hparams.prefixModel_name_or_path))
-            self.model = PrefixTuning.from_pretrained(self.hparams.prefixModel_name_or_path,
-                        from_tf=bool(".ckpt" in self.hparams.prefixModel_name_or_path),
-                        cache_dir=cache_dir,
-                        config=config_prefix,
-                        model_gpt2=self.seq2seq_model)
+            if self.model_type == 'bart':
+                self.model = PrefixTuning.from_pretrained(self.hparams.prefixModel_name_or_path,
+                            from_tf=bool(".ckpt" in self.hparams.prefixModel_name_or_path),
+                            cache_dir=cache_dir,
+                            config=config_prefix,
+                            model_gpt2=self.seq2seq_model)
+            elif self.model_type == 'mt5' or self.model_type == 't5':
+                self.model = PrefixTuningT5.from_pretrained(self.hparams.prefixModel_name_or_path,
+                            from_tf=bool(".ckpt" in self.hparams.prefixModel_name_or_path),
+                            cache_dir=cache_dir,
+                            config=config_prefix,
+                            model_gpt2=self.seq2seq_model)
+            else:
+                assert False, "do not support model type:{}".format(self.model_type)
         else:
-            self.model = PrefixTuning(config_prefix, self.seq2seq_model)
-
-
+            if self.model_type == "bart":
+                self.model = PrefixTuning(config_prefix, self.seq2seq_model)
+            elif self.model_type == "mt5" or self.model_type == 't5':
+                self.model = PrefixTuningT5(config_prefix, self.seq2seq_model)
+            else:
+                assert False, "do not support model type:{}".format(self.model_type)
+        
 
     def load_hf_checkpoint(self, *args, **kwargs):
         assert False, 'why need to load model here?'

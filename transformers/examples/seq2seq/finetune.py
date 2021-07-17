@@ -66,6 +66,7 @@ class PrefixSummarizationModule(PrefixTransformer):
                 raise ValueError("--sortish_sampler and --max_tokens_per_batch may not be used simultaneously")
         super().__init__(hparams, num_labels=None, mode=self.mode, **kwargs)
         use_task_specific_params(self.model, "summarization")
+        use_task_specific_params(self.seq2seq_model,"summarization")
         save_git_info(self.hparams.output_dir)
         self.metrics_save_path = Path(self.output_dir) / "metrics.json"
         self.hparams_save_path = Path(self.output_dir) / "hparams.pkl"
@@ -131,7 +132,7 @@ class PrefixSummarizationModule(PrefixTransformer):
 
     def freeze_embeds(self):
         """Freeze token embeddings and positional embeddings for bart, just token embeddings for t5."""
-        if self.model_type == "t5":
+        if self.model_type == "t5" or self.mdoel_type == "mt5":
             freeze_params(self.model.shared)
             for d in [self.model.encoder, self.model.decoder]:
                 freeze_params(d.embed_tokens)
@@ -146,7 +147,11 @@ class PrefixSummarizationModule(PrefixTransformer):
                 freeze_params(d.embed_tokens)
 
     def forward(self, input_ids, **kwargs):
-        return self.model(input_ids, gpt2_model=self.seq2seq_model, **kwargs)
+        #TODO:only keep second condition
+        if isinstance(self.model, T5ForConditionalGeneration):
+            return self.model(input_ids, **kwargs)
+        else:
+            return self.model(input_ids, gpt2_model=self.seq2seq_model, **kwargs)
 
     def ids_to_clean_text(self, generated_ids: List[int]):
         gen_text = self.tokenizer.batch_decode(
@@ -158,8 +163,10 @@ class PrefixSummarizationModule(PrefixTransformer):
         pad_token_id = self.tokenizer.pad_token_id
         src_ids, src_mask = batch["input_ids"], batch["attention_mask"]
         tgt_ids = batch["labels"]
-        if isinstance(self.model, T5ForConditionalGeneration):
-            decoder_input_ids = self.model._shift_right(tgt_ids)
+        #if isinstance(self.model, T5ForConditionalGeneration):
+        #    decoder_input_ids = self.model._shift_right(tgt_ids)
+        if isinstance(self.seq2seq_model, T5ForConditionalGeneration):
+            decoder_input_ids = self.seq2seq_model._shift_right(tgt_ids)
         else:
             decoder_input_ids = shift_tokens_right(tgt_ids, pad_token_id)
 
@@ -250,8 +257,10 @@ class PrefixSummarizationModule(PrefixTransformer):
         # parser.add_argument('--eval_max_gen_length', type=int, default=None, help='never generate more than n tokens')
         # get the prompt:
         bsz = batch["input_ids"].size(0)
-        prefix_prompt = self.model.get_prompt(bsz=bsz, sample_size=self.eval_beams)
-        # print(prefix_prompt)
+        #TODO:add prompt
+        prefix_prompt = None
+        #prefix_prompt = self.model.get_prompt(bsz=bsz, sample_size=self.eval_beams)
+        #print(prefix_prompt)
         generated_ids = self.seq2seq_model.generate(
             batch["input_ids"],
             past_key_values=prefix_prompt,
