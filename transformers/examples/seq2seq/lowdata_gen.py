@@ -59,7 +59,7 @@ if __name__ == '__main__':
     test_path_src2 = os.path.join(data_dir2, 'test.source')
     test_path_tgt2 = os.path.join(data_dir2, 'test.target')
     select(train_path_src, train_path_tgt, 1, train_path_src2, train_path_tgt2)
-    select(dev_path_src, dev_path_tgt, 200, dev_path_src2, dev_path_tgt2)
+    select(dev_path_src, dev_path_tgt, 1, dev_path_src2, dev_path_tgt2)
     select(test_path_src, test_path_tgt, 1, test_path_src2, test_path_tgt2)
 
     #select(train_path_src, train_path_tgt, num_, train_path_src2, train_path_tgt2)

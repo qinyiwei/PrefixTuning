@@ -215,6 +215,10 @@ class PrefixTransformer(pl.LightningModule):
         config_prefix.prefix_dropout = self.hparams.prefix_dropout
         config_prefix.vocab_size = len(self.tokenizer)
 
+        config_prefix.use_self_prefix = self.hparams.use_self_prefix
+        config_prefix.use_cross_prefix = self.hparams.use_cross_prefix
+        config_prefix.use_encoder_prefix = self.hparams.use_encoder_prefix
+
         config_prefix.lowdata = ('lowdata' in self.hparams.output_dir)
         if config_prefix.lowdata and self.hparams.use_lowdata_token == 'yes':
             config_prefix.lowdata_token = self.tokenizer([self.hparams.lowdata_token],

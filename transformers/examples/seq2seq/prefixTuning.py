@@ -33,9 +33,9 @@ class PrefixTuningT5(T5PreTrainedModel):
         self.n_embd = config.d_model
         self.match_n_embd = self.n_embd // self.match_n_head
 
-        self.use_encoder_prefix = False#config.use_encoder_prefix
-        self.use_cross_prefix = False#config.use_cross_prefix
-        self.use_self_prefix = False#config.use_self_prefix
+        self.use_encoder_prefix = config.use_encoder_prefix
+        self.use_cross_prefix = config.use_cross_prefix
+        self.use_self_prefix = config.use_self_prefix
 
         if hasattr(config, 'optim_prefix'):
             self.optim_prefix = config.optim_prefix
