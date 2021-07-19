@@ -115,6 +115,21 @@ class PrefixTransformer(pl.LightningModule):
         self.output_dir = Path(self.hparams.output_dir)
         cache_dir = self.hparams.cache_dir if self.hparams.cache_dir else None
         print('the cache dir is {}'.format(cache_dir))
+
+
+        if self.hparams.max_length:
+            config_kwargs.update({'max_length': self.hparams.max_length})
+        if self.hparams.num_beams:
+            config_kwargs.update({'num_beams': self.hparams.num_beams})
+        if self.hparams.length_penalty:
+            config_kwargs.update({'length_penalty': self.hparams.length_penalty})
+        if self.hparams.no_repeat_ngram_size:
+            config_kwargs.update({'no_repeat_ngram_size': self.hparams.no_repeat_ngram_size})
+        if self.hparams.min_length:
+            config_kwargs.update({'min_length': self.hparams.min_length})
+        if self.hparams.prefix:
+            config_kwargs.update({'prefix': self.hparams.prefix})
+
         if config is None:
             self.config = AutoConfig.from_pretrained(
                 self.hparams.config_name if self.hparams.config_name else self.hparams.model_name_or_path,
@@ -143,6 +158,10 @@ class PrefixTransformer(pl.LightningModule):
         # print(self.hparams.preseqlen)
         self.config.preseqlen = self.hparams.preseqlen
         self.config.use_prefix = True
+        self.config.use_self_prefix = self.hparams.use_self_prefix
+        self.config.use_cross_prefix = self.hparams.use_cross_prefix
+        self.config.use_encoder_prefix = self.hparams.use_encoder_prefix
+
 
         self.seq2seq_model_type = MODEL_MODES[mode]
 

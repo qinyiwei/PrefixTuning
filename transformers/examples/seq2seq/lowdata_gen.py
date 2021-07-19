@@ -3,7 +3,7 @@ import random
 import numpy as np
 
 
-data_dir = 'xsum'
+data_dir = '/home/yiweiq/PrefixTuning_data/cnn_dm'
 train_path_src = os.path.join(data_dir, 'train.source')
 train_path_tgt = os.path.join(data_dir, 'train.target')
 dev_path_src = os.path.join(data_dir, 'val.source')
@@ -45,8 +45,10 @@ if __name__ == '__main__':
     num_ = int(sys.argv[1])
     seed_ = int(sys.argv[2])
     np.random.seed(seed_)
-    data_dir2 = 'lowdata_xsum/xsum_{}_{}'.format(num_, seed_)
-    os.mkdir(data_dir2)
+    #data_dir2 = data_dir+'/lowdata/{}_{}_{}'.format(data_dir,num_, seed_)
+    data_dir2 = data_dir + '/lowdata'
+    if not os.path.exists(data_dir2):
+        os.mkdir(data_dir2)
 
     # data_dir2 = 'lowdata_xsum/xsum_small_test'
 
@@ -56,11 +58,14 @@ if __name__ == '__main__':
     dev_path_tgt2 = os.path.join(data_dir2, 'val.target')
     test_path_src2 = os.path.join(data_dir2, 'test.source')
     test_path_tgt2 = os.path.join(data_dir2, 'test.target')
-    select(train_path_src, train_path_tgt, num_, train_path_src2, train_path_tgt2)
-    select(dev_path_src, dev_path_tgt, int(num_*0.3), dev_path_src2, dev_path_tgt2)
+    select(train_path_src, train_path_tgt, 1, train_path_src2, train_path_tgt2)
+    select(dev_path_src, dev_path_tgt, 200, dev_path_src2, dev_path_tgt2)
+    select(test_path_src, test_path_tgt, 1, test_path_src2, test_path_tgt2)
 
-    # os.mkdir(data_dir2)
-    # select(test_path_src, test_path_tgt, 1500, test_path_src2, test_path_tgt2)
+    #select(train_path_src, train_path_tgt, num_, train_path_src2, train_path_tgt2)
+    #select(dev_path_src, dev_path_tgt, int(num_*0.1), dev_path_src2, dev_path_tgt2)
+    #select(test_path_src, test_path_tgt, int(num_*0.1), test_path_src2, test_path_tgt2)
+    #select(test_path_src, test_path_tgt, 1500, test_path_src2, test_path_tgt2)
 
 
 

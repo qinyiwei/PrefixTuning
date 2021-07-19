@@ -114,21 +114,21 @@ class PrefixSummarizationModule(PrefixTransformer):
         self.dataset_class = (
             Seq2SeqDataset if hasattr(self.tokenizer, "prepare_seq2seq_batch") else LegacySeq2SeqDataset
         )
-        self.eval_beams = self.model.config.num_beams if self.hparams.eval_beams is None else self.hparams.eval_beams
+        self.eval_beams = self.seq2seq_model.config.num_beams if self.hparams.eval_beams is None else self.hparams.eval_beams
         assert self.eval_beams >= 1, f"got self.eval_beams={self.eval_beams}. Need an integer > 1"
         if self.hparams.eval_max_gen_length is not None:
             self.eval_max_length = self.hparams.eval_max_gen_length
         else:
-            self.eval_max_length = self.model.config.max_length
+            self.eval_max_length = self.seq2seq_model.config.max_length
         self.val_metric = self.default_val_metric if self.hparams.val_metric is None else self.hparams.val_metric
 
         self.training_acc_across_batches_at_curr_epoch = []
 
-        self.eval_max_length = 62
-        self.eval_min_length = 11
-        self.eval_beams =6
-        print('for deocding, eval_max_length={}, '
-              'eval_min_length={}, eval_beams={}'.format(self.eval_max_length, self.eval_min_length, self.eval_beams))
+        #self.eval_max_length = 62
+        #self.eval_min_length = 11
+        #self.eval_beams =6
+        #print('for deocding, eval_max_length={}, '
+        #      'eval_min_length={}, eval_beams={}'.format(self.eval_max_length, self.eval_min_length, self.eval_beams))
 
     def freeze_embeds(self):
         """Freeze token embeddings and positional embeddings for bart, just token embeddings for t5."""
@@ -269,8 +269,9 @@ class PrefixSummarizationModule(PrefixTransformer):
             use_prefix=True,
             decoder_start_token_id=self.decoder_start_token_id,
             num_beams=self.eval_beams,
-            min_length=self.eval_min_length,
+            #min_length=self.eval_min_length,
             max_length=self.eval_max_length,
+            no_repeat_ngram_size=self.hparams.no_repeat_ngram_size,
         )
         gen_time = (time.time() - t0) / batch["input_ids"].shape[0]
         preds: List[str] = self.ids_to_clean_text(generated_ids)
@@ -410,6 +411,20 @@ class PrefixSummarizationModule(PrefixTransformer):
             required=False,
             help="-1 means never early stop. early_stopping_patience is measured in validation checks, not epochs. So val_check_interval will effect it.",
         )
+
+
+        parser.add_argument("--use_encoder_prefix", action="store_true", help="use encoder prefix")
+        parser.add_argument("--use_self_prefix", action="store_true", help="use self prefix")
+        parser.add_argument("--use_cross_prefix", action="store_true", help="use cross prefix")
+
+
+        parser.add_argument("--no_repeat_ngram_size", type=int, default=3, help="no repeat ngram size.")
+        parser.add_argument("--num_beams", type=int, default=4, help="num_beams to use for evaluation.")
+        parser.add_argument("--max_length", type=int, default=200, help="max output length.")
+        parser.add_argument("--min_length", type=int, default=None, help="min output length.")
+        parser.add_argument("--prefix", type=str, default=None, help="prefix.")
+
+
         return parser
 
 
@@ -727,6 +742,7 @@ class SummarizationModule(BaseTransformer):
             required=False,
             help="-1 means never early stop. early_stopping_patience is measured in validation checks, not epochs. So val_check_interval will effect it.",
         )
+
         return parser
 
 
