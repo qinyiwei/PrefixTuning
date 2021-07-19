@@ -191,6 +191,7 @@ class PrefixSummarizationModule(PrefixTransformer):
             loss, nll_loss = label_smoothed_nll_loss(
                 lprobs, tgt_ids, self.hparams.label_smoothing, ignore_index=pad_token_id
             )
+        #print(loss)
         return (loss,)
 
     @property
@@ -257,9 +258,7 @@ class PrefixSummarizationModule(PrefixTransformer):
         # parser.add_argument('--eval_max_gen_length', type=int, default=None, help='never generate more than n tokens')
         # get the prompt:
         bsz = batch["input_ids"].size(0)
-        #TODO:add prompt
-        prefix_prompt = None
-        #prefix_prompt = self.model.get_prompt(bsz=bsz, sample_size=self.eval_beams)
+        prefix_prompt = self.model.get_prompt(bsz=bsz, sample_size=self.eval_beams)
         #print(prefix_prompt)
         generated_ids = self.seq2seq_model.generate(
             batch["input_ids"],
@@ -283,6 +282,8 @@ class PrefixSummarizationModule(PrefixTransformer):
         rouge: Dict = self.calc_generative_metrics(preds, target)
         summ_len = np.mean(lmap(len, generated_ids))
         base_metrics.update(gen_time=gen_time, gen_len=summ_len, preds=preds, target=target, **rouge)
+        print(loss_tensors)
+        print(rouge)
         return base_metrics
 
     def test_step(self, batch, batch_idx):
