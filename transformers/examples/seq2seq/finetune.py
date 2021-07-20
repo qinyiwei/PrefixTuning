@@ -22,6 +22,7 @@ if transformers.__version__=="3.2.0":
     from transformers.modeling_bart import shift_tokens_right
 else:
     from transformers.models.bart.modeling_bart import shift_tokens_right
+from tqdm import tqdm
 
 from utils import (
     ROUGE_KEYS,
@@ -283,8 +284,8 @@ class PrefixSummarizationModule(PrefixTransformer):
         rouge: Dict = self.calc_generative_metrics(preds, target)
         summ_len = np.mean(lmap(len, generated_ids))
         base_metrics.update(gen_time=gen_time, gen_len=summ_len, preds=preds, target=target, **rouge)
-        print(loss_tensors)
-        print(rouge)
+        #print(loss_tensors)
+        #print(rouge)
         return base_metrics
 
     def test_step(self, batch, batch_idx):
@@ -856,7 +857,7 @@ def eval(args, model=None) -> SummarizationModule:
         print(model.device)
         data_loader = model.test_dataloader()
         out_lst = []
-        for batch_idx, batch in enumerate(data_loader):
+        for batch_idx, batch in enumerate(tqdm(data_loader)):
             # print(batch)
             batch = model.transfer_batch_to_device(batch, model.device)
             # if batch_idx>10:
@@ -872,15 +873,21 @@ def eval(args, model=None) -> SummarizationModule:
         if k != 'preds':
             print(k, v)
 
-    if args.tuning_mode == 'finetune':
-        out_path = os.path.join(args.model_name_or_path, 'test_beam_{}'.format(args.length_penalty))
-    else:
-        out_path = os.path.join(args.prefixModel_name_or_path, 'test_beam_{}'.format(args.length_penalty))
-    # out_path = args.output_dir
+    output_path = os.path.join(args.output_dir,'checkpoint-curr_best')
+    if not os.path.exists(output_path):
+        os.mkdir(output_path)
+
+    out_path = os.path.join(output_path, 'test_beam_{}'.format(args.length_penalty))
     print('writing the test results to ', out_path)
     with open(out_path, 'w') as f:
         for preds in result['preds']:
             print(preds, file=f)
+
+    out_path = os.path.join(output_path,'test_result_{}'.format(args.length_penalty))
+    with open(out_path,'w') as f:
+        for k, v in result.items():
+            if k != 'preds':
+                print(k, v)
 
     # print(result)
     #for k, v in result.items():
@@ -924,6 +931,6 @@ if __name__ == "__main__":
         else:
             args.prefixModel_name_or_path = os.path.join(args.output_dir,'checkpoint-curr_best')
             args.eval_batch_size = 10
-        args.data_dir = args.data_dir+'/lowdata'
+        args.data_dir = args.data_dir#+'/lowdata'
         args.do_train = False
         eval(args)
